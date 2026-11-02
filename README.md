@@ -394,6 +394,16 @@ collection `vectordb_collection_vectors`, `_tombstones`, `_last_lsn`,
 `vectordb_searches_total`, `vectordb_recovery_replayed_records`,
 `vectordb_recovery_truncated_bytes`, plus uptime, goroutines and heap size.
 
+### Demos
+
+Recorded from real runs with [vhs](https://github.com/charmbracelet/vhs); each tape is in `docs/demo/`.
+
+Creating a collection, upserting vectors, and searching over the HTTP API.
+
+<p align="center">
+  <img src="docs/demo/api.gif" alt="Creating a collection, upserting vectors, and searching over the HTTP API" width="860">
+</p>
+
 ## Design decisions
 
 Design decisions are recorded as ADRs in [docs/adr](docs/adr/):
