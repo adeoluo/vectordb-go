@@ -55,7 +55,7 @@ Run the full local gate (`make all`) before committing; CI runs the same checks.
   and re-render `architecture.svg` so the diagram matches the code.
 - README sections keep their fixed order. Prose avoids em and en dashes and promotional wording.
 - Tests accompany behavior changes; a bug fix comes with a test that fails without it.
-- Releases are cut by the maintainer with `make cut-release`, never from CI.
+- Releases are cut with `make cut-release`.
 
 ## Go notes
 

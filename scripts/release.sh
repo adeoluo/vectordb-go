@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Cut a release from Conventional Commits. Run locally by the maintainer so the
-# tag, release, and changelog are authored by a person, not a CI bot.
+# Cut a release from Conventional Commits, run locally.
 #
 #   scripts/release.sh             next version inferred from commits since the last tag
 #   scripts/release.sh v1.2.3      explicit version
