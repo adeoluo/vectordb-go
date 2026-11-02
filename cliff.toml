@@ -25,7 +25,7 @@ trim = true
 
 [git]
 conventional_commits = true
-filter_unconventional = true
+filter_unconventional = false
 split_commits = false
 protect_breaking_commits = true
 filter_commits = false
@@ -41,6 +41,17 @@ commit_parsers = [
   { message = "^test", group = "<!-- 5 -->Tests" },
   { message = "^(ci|build)", group = "<!-- 6 -->Build and CI" },
   { message = "^(chore|style)", group = "<!-- 7 -->Maintenance" },
+  # Squash merges are titled after the pull request; classify them by the first
+  # Conventional Commit listed in the body ("* feat(scope): ...").
+  { message = "(?ms)^\\* feat", group = "<!-- 0 -->Features" },
+  { message = "(?ms)^\\* fix", group = "<!-- 1 -->Bug fixes" },
+  { message = "(?ms)^\\* perf", group = "<!-- 2 -->Performance" },
+  { message = "(?ms)^\\* refactor", group = "<!-- 3 -->Refactoring" },
+  { message = "(?ms)^\\* docs?", group = "<!-- 4 -->Documentation" },
+  { message = "(?ms)^\\* test", group = "<!-- 5 -->Tests" },
+  { message = "(?ms)^\\* (ci|build)", group = "<!-- 6 -->Build and CI" },
+  { message = "(?ms)^\\* (chore|style)", group = "<!-- 7 -->Maintenance" },
+  { message = ".*", skip = true },
 ]
 
 [bump]
