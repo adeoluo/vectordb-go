@@ -1,16 +1,27 @@
-# vectordb-go
+<h1 align="center">VectorDB Go</h1>
 
-[![CI](https://github.com/adeoluo/vectordb-go/actions/workflows/ci.yml/badge.svg)](https://github.com/adeoluo/vectordb-go/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/adeoluo/vectordb-go/actions/workflows/codeql.yml/badge.svg)](https://github.com/adeoluo/vectordb-go/actions/workflows/codeql.yml)
+<p align="center">
+  <em>A concurrent, persistent HNSW vector database server in Go, with a checksummed write-ahead log, snapshots, and crash recovery.</em>
+</p>
 
-A concurrent, persistent vector database server written in Go with only the
-standard library. It serves approximate nearest neighbor search over an HNSW
-graph (Malkov and Yashunin, 2016), makes every acknowledged write durable
-through a checksummed write-ahead log, and restarts from a snapshot plus log
-replay after a crash.
+<p align="center">
+  <a href="https://github.com/adeoluo/vectordb-go/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/adeoluo/vectordb-go/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/adeoluo/vectordb-go/releases"><img alt="Release" src="https://img.shields.io/github/v/release/adeoluo/vectordb-go"></a>
+  <img alt="Go" src="https://img.shields.io/badge/go-1.24-00ADD8">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
 
-It is the compiled, durable, concurrent counterpart of my Python HNSW library
-[ann-vector-search-library](https://github.com/adeoluo/ann-vector-search-library):
+---
+
+## Motivation
+
+A concurrent, persistent vector database server written in Go. It serves
+approximate nearest neighbor search over an HNSW graph (Malkov and Yashunin,
+2016), makes every acknowledged write durable through a checksummed
+write-ahead log, and restarts from a snapshot plus log replay after a crash.
+
+It is the compiled, durable, concurrent counterpart of the Python HNSW library
+([ann-vector-search-library](https://github.com/adeoluo/ann-vector-search-library)):
 the same algorithm and the same neighbor selection heuristic, measured on the
 same dataset, with persistence and concurrency added.
 
@@ -28,109 +39,20 @@ same dataset, with persistence and concurrency added.
   crash test that SIGKILLs a real server process mid-write, damages the log
   tail, restarts, and checks every acknowledged vector bit for bit.
 
-## Contents
-
-- [Quickstart](#quickstart)
-- [Architecture](#architecture)
-- [Durability guarantees and limits](#durability-guarantees-and-limits)
-- [API reference](#api-reference)
-- [Benchmarks](#benchmarks)
-- [Relation to ann-vector-search-library](#relation-to-ann-vector-search-library)
-- [Testing](#testing)
-- [Limitations](#limitations)
-- [Roadmap](#roadmap)
-
-## Quickstart
-
-Requires Go 1.24 or later, or Docker. Prebuilt binaries for Linux and macOS
-are on the [releases page](https://github.com/adeoluo/vectordb-go/releases).
-
-```sh
-git clone https://github.com/adeoluo/vectordb-go
-cd vectordb-go
-make build
-./bin/vectordb serve --data-dir ./data --addr 127.0.0.1:8080
-```
-
-In another terminal:
-
-```sh
-# Create a collection of 3-dimensional vectors.
-curl -s -X POST localhost:8080/v1/collections \
-  -d '{"name":"docs","dim":3,"metric":"cosine","m":16,"ef_construction":200}'
-
-# Upsert a batch.
-curl -s -X POST localhost:8080/v1/collections/docs/upsert -d '{
-  "vectors": [
-    {"id": "a", "values": [0.1, 0.9, 0.0]},
-    {"id": "b", "values": [0.8, 0.1, 0.1]},
-    {"id": "c", "values": [0.2, 0.7, 0.1]}
-  ]}'
-# {"lsn":1,"upserted":3}
-
-# Search.
-curl -s -X POST localhost:8080/v1/collections/docs/search \
-  -d '{"vector": [0.1, 0.8, 0.05], "k": 2, "ef": 64}'
-# {"results":[{"id":"a","distance":0.00201118},{"id":"c","distance":0.014472485}],"took_ms":0.006}
-```
-
-With Docker:
-
-```sh
-docker build -t vectordb-go .
-docker run -p 8080:8080 -v vectordb-data:/data vectordb-go
-```
-
-### Command line
-
-```
-vectordb serve --data-dir DIR [flags]   run the HTTP server
-vectordb bench [flags]                  measure build time, recall and latency in process
-vectordb load --url URL [flags]         drive a running server over HTTP
-vectordb version
-```
-
-Main `serve` flags:
-
-| Flag | Default | Meaning |
-|---|---|---|
-| `--data-dir` | required | collections, logs and snapshots |
-| `--addr` | `127.0.0.1:8080` | listen address |
-| `--fsync` | `always` | `always`, `interval` or `never` (see below) |
-| `--fsync-interval` | `100ms` | period for `--fsync interval` |
-| `--snapshot-interval` | `5m` | snapshot when this much time has passed and there are new writes |
-| `--snapshot-wal-bytes` | `256MiB` | snapshot after this many log bytes |
-| `--snapshot-on-close` | `true` | snapshot during graceful shutdown |
-| `--wal-segment-bytes` | `64MiB` | rotate log segments at this size |
-| `--shutdown-timeout` | `15s` | time allowed for in-flight requests on SIGTERM |
-
 ## Architecture
 
-```mermaid
-flowchart LR
-    client([client]) -->|HTTP JSON| server[server]
-    server --> db[db]
-    db --> col[collection]
-    col -->|1. append record| wal[(WAL segments<br/>CRC-32C frames)]
-    col -->|2. fsync, group commit| wal
-    col -->|3. link nodes| idx[HNSW graph<br/>in memory]
-    col -.->|periodic| snap[(snapshots)]
-    snap -.->|startup: load newest valid| idx
-    wal -.->|startup: replay records after snapshot LSN| idx
-```
+<p align="center">
+  <img src="docs/architecture/architecture.svg" alt="Architecture diagram" width="860">
+</p>
 
 A write goes to the log first and becomes searchable only after it is
 durable. Startup loads the newest valid snapshot and replays the log records
 after it. Detailed write, snapshot and recovery sequences are in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Design decisions are recorded
-as ADRs:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-- [0001: per-node locks and an atomically published node table](docs/adr/0001-locking-strategy.md)
-- [0002: WAL record format with CRC-32C and dense LSNs](docs/adr/0002-wal-format.md)
-- [0003: snapshots of the full graph plus WAL replay](docs/adr/0003-snapshot-and-replay.md)
-- [0004: chunked contiguous storage](docs/adr/0004-chunked-storage.md)
+### Concurrency model
 
-**Concurrency model.** Searches never take an index-wide lock. Nodes live in
+Searches never take an index-wide lock. Nodes live in
 1024-node chunks whose table is published through an `atomic.Pointer`;
 vectors are immutable after allocation; each node has its own `RWMutex`
 guarding only its adjacency lists; and a goroutine holds at most one node
@@ -139,7 +61,7 @@ write mutex orders log appends and id assignment; the expensive parts (fsync
 wait and graph linking) run outside it, so concurrent writers overlap and a
 batch is linked in parallel.
 
-## Durability guarantees and limits
+### Durability guarantees and limits
 
 What an acknowledged write (HTTP 200 from `upsert` or `delete`) means:
 
@@ -183,54 +105,7 @@ Limits:
 - `GET /vectors/{id}` can observe a new vector a few milliseconds before its
   fsync completes; searches cannot.
 
-## API reference
-
-All bodies are JSON. Errors return `{"error": "..."}` with 400 (invalid
-input), 404 (unknown collection or id), 409 (collection exists), 413 (body
-over 64 MiB) or 503 (collection closing). Unknown JSON fields are rejected.
-
-| Method and path | Body | Response |
-|---|---|---|
-| `GET /health` | | `{"status":"ok"}` |
-| `GET /metrics` | | Prometheus text format |
-| `GET /v1/collections` | | `{"collections":[stats...]}` |
-| `POST /v1/collections` | `{"name","dim","metric","m","ef_construction"}` | 201, stats |
-| `GET /v1/collections/{name}` | | stats |
-| `DELETE /v1/collections/{name}` | | `{"dropped":true}` |
-| `POST /v1/collections/{name}/upsert` | `{"vectors":[{"id","values"}]}` | `{"upserted","lsn"}` |
-| `POST /v1/collections/{name}/delete` | `{"ids":[...]}` | `{"deleted","lsn"}` |
-| `POST /v1/collections/{name}/search` | `{"vector","k","ef"}` | `{"results":[{"id","distance"}],"took_ms"}` |
-| `GET /v1/collections/{name}/vectors/{id}` | | `{"id","values"}` |
-| `POST /v1/collections/{name}/snapshot` | | `{"snapshot_lsn"}` |
-
-Details:
-
-- **Collections.** `name` matches `[A-Za-z0-9][A-Za-z0-9_-]{0,63}`. `dim` is
-  1 to 65536. `metric` is `l2` (default) or `cosine`. `m` defaults to 16
-  (range 2 to 256) and `ef_construction` to 200. All are fixed at creation.
-- **Upsert.** 1 to 10,000 vectors per request. Ids are 1 to 512 bytes.
-  Values must be finite. An existing id is replaced (the old node is
-  tombstoned). Within a batch the last occurrence of an id wins.
-- **Delete.** Tombstones the ids. Missing ids are ignored; `deleted` counts
-  the ones that existed.
-- **Search.** `k` is 1 to 1000 (default 10). `ef` is the search beam width;
-  0 or omitted means `max(64, k)`. Distances are Euclidean for `l2` and
-  `1 - cosine similarity` for `cosine`.
-- **Get.** For `cosine` collections the stored vector is the normalized input.
-- **Stats** include `vectors`, `tombstones`, `last_lsn`, `snapshot_lsn`,
-  `wal_segments`, `wal_fsyncs`, and a `recovery` object with the snapshot LSN
-  used at startup, records replayed, bytes truncated and time taken.
-
-Metrics: `vectordb_http_requests_total{route,code}`,
-`vectordb_http_request_duration_seconds` (histogram per route), and per
-collection `vectordb_collection_vectors`, `_tombstones`, `_last_lsn`,
-`_snapshot_lsn`, `_wal_segments`, `vectordb_wal_bytes_written_total`,
-`vectordb_wal_fsyncs_total`, `vectordb_snapshots_total`,
-`vectordb_upserts_total`, `vectordb_deletes_total`,
-`vectordb_searches_total`, `vectordb_recovery_replayed_records`,
-`vectordb_recovery_truncated_bytes`, plus uptime, goroutines and heap size.
-
-## Benchmarks
+## Results
 
 All numbers below were measured on one machine: Apple M1 (4 performance and
 4 efficiency cores, 8 GB), macOS 27, Go 1.27.3, Python 3.13, hnswlib 0.8.0,
@@ -254,7 +129,8 @@ Method notes:
 - hnswlib and FAISS queries are timed as one batched call (`num_threads=1`
   for the single-thread column), so Python call overhead is excluded.
   vectordb-go queries are timed one at a time inside the Go process. The
-  Python implementation is timed one query at a time, as it is used.
+  Python HNSW library (ann-vector-search-library) is timed one query at a
+  time, as it is used.
 - "Latency" is mean time per query on one thread.
 - The query generator draws a new set of cluster centers (seed 1), so queries
   fall between the base clusters. This is a hard case for graph search and
@@ -297,13 +173,14 @@ Reproduce: `make build && uv run --project ../ann-vector-search-library python b
 | hnswlib (C++) | 13.817 s | 3.139 s | 0.652 | 0.037 ms | 26,752 | 115,184 |
 | **vectordb-go (Go)** | 17.234 s | 3.632 s | 0.710 | 0.052 ms | 19,310 | 96,045 |
 
-The Python implementation was not run at 100,000 vectors: at roughly 1.8 to
+The Python HNSW library (ann-vector-search-library) was not run at 100,000 vectors: at roughly 1.8 to
 2.7 ms per insert, a single-threaded build would take several minutes, and
 its own README already documents how it scales.
 
 **Reading the results.**
 
-- **Against the Python implementation** (same algorithm, same data), the Go
+- **Against the Python HNSW library (ann-vector-search-library)** (same
+  algorithm, same data), the Go
   implementation builds 32x faster at dim 16 and 42x faster at dim 32 on
   one thread, and answers queries 30x and 37x faster. This is the gap the
   Python library's README identified; a compiled implementation closes it.
@@ -371,7 +248,7 @@ Recovery time for the same 100,000 vector collection: **49 ms** from a
 snapshot, **3.46 s** from log replay alone (1,000 records, graph rebuilt with
 parallel linking).
 
-## Relation to ann-vector-search-library
+### Relation to ann-vector-search-library
 
 [ann-vector-search-library](https://github.com/adeoluo/ann-vector-search-library)
 is the Python HNSW library this project is compared against. Its README
@@ -381,7 +258,7 @@ roadmap. This project is that follow-up:
 
 | | ann-vector-search-library | vectordb-go |
 |---|---|---|
-| Language | Python | Go, standard library only |
+| Language | Python | Go |
 | Algorithm | HNSW, heuristic neighbor selection | same algorithm and heuristic |
 | Parameters | `m`, `ef_construction`, `ef` | same parameters, same values in the benchmark |
 | Concurrency | single threaded | concurrent inserts and searches, per-node locks |
@@ -391,6 +268,128 @@ roadmap. This project is that follow-up:
 
 The comparison script imports the Python library's data generator and index
 directly, so both are measured on identical vectors and queries.
+
+## Quickstart
+
+Requires Go 1.24 or later, or Docker. Prebuilt binaries for Linux and macOS
+are on the [releases page](https://github.com/adeoluo/vectordb-go/releases).
+
+```sh
+git clone https://github.com/adeoluo/vectordb-go
+cd vectordb-go
+make build
+./bin/vectordb serve --data-dir ./data --addr 127.0.0.1:8080
+```
+
+In another terminal:
+
+```sh
+# Create a collection of 3-dimensional vectors.
+curl -s -X POST localhost:8080/v1/collections \
+  -d '{"name":"docs","dim":3,"metric":"cosine","m":16,"ef_construction":200}'
+
+# Upsert a batch.
+curl -s -X POST localhost:8080/v1/collections/docs/upsert -d '{
+  "vectors": [
+    {"id": "a", "values": [0.1, 0.9, 0.0]},
+    {"id": "b", "values": [0.8, 0.1, 0.1]},
+    {"id": "c", "values": [0.2, 0.7, 0.1]}
+  ]}'
+# {"lsn":1,"upserted":3}
+
+# Search.
+curl -s -X POST localhost:8080/v1/collections/docs/search \
+  -d '{"vector": [0.1, 0.8, 0.05], "k": 2, "ef": 64}'
+# {"results":[{"id":"a","distance":0.00201118},{"id":"c","distance":0.014472485}],"took_ms":0.006}
+```
+
+With Docker:
+
+```sh
+docker build -t vectordb-go .
+docker run -p 8080:8080 -v vectordb-data:/data vectordb-go
+```
+
+## Usage
+
+### Command line
+
+```
+vectordb serve --data-dir DIR [flags]   run the HTTP server
+vectordb bench [flags]                  measure build time, recall and latency in process
+vectordb load --url URL [flags]         drive a running server over HTTP
+vectordb version
+```
+
+Main `serve` flags:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--data-dir` | required | collections, logs and snapshots |
+| `--addr` | `127.0.0.1:8080` | listen address |
+| `--fsync` | `always` | `always`, `interval` or `never` (see below) |
+| `--fsync-interval` | `100ms` | period for `--fsync interval` |
+| `--snapshot-interval` | `5m` | snapshot when this much time has passed and there are new writes |
+| `--snapshot-wal-bytes` | `256MiB` | snapshot after this many log bytes |
+| `--snapshot-on-close` | `true` | snapshot during graceful shutdown |
+| `--wal-segment-bytes` | `64MiB` | rotate log segments at this size |
+| `--shutdown-timeout` | `15s` | time allowed for in-flight requests on SIGTERM |
+
+### HTTP API
+
+All bodies are JSON. Errors return `{"error": "..."}` with 400 (invalid
+input), 404 (unknown collection or id), 409 (collection exists), 413 (body
+over 64 MiB) or 503 (collection closing). Unknown JSON fields are rejected.
+
+| Method and path | Body | Response |
+|---|---|---|
+| `GET /health` | | `{"status":"ok"}` |
+| `GET /metrics` | | Prometheus text format |
+| `GET /v1/collections` | | `{"collections":[stats...]}` |
+| `POST /v1/collections` | `{"name","dim","metric","m","ef_construction"}` | 201, stats |
+| `GET /v1/collections/{name}` | | stats |
+| `DELETE /v1/collections/{name}` | | `{"dropped":true}` |
+| `POST /v1/collections/{name}/upsert` | `{"vectors":[{"id","values"}]}` | `{"upserted","lsn"}` |
+| `POST /v1/collections/{name}/delete` | `{"ids":[...]}` | `{"deleted","lsn"}` |
+| `POST /v1/collections/{name}/search` | `{"vector","k","ef"}` | `{"results":[{"id","distance"}],"took_ms"}` |
+| `GET /v1/collections/{name}/vectors/{id}` | | `{"id","values"}` |
+| `POST /v1/collections/{name}/snapshot` | | `{"snapshot_lsn"}` |
+
+Details:
+
+- **Collections.** `name` matches `[A-Za-z0-9][A-Za-z0-9_-]{0,63}`. `dim` is
+  1 to 65536. `metric` is `l2` (default) or `cosine`. `m` defaults to 16
+  (range 2 to 256) and `ef_construction` to 200. All are fixed at creation.
+- **Upsert.** 1 to 10,000 vectors per request. Ids are 1 to 512 bytes.
+  Values must be finite. An existing id is replaced (the old node is
+  tombstoned). Within a batch the last occurrence of an id wins.
+- **Delete.** Tombstones the ids. Missing ids are ignored; `deleted` counts
+  the ones that existed.
+- **Search.** `k` is 1 to 1000 (default 10). `ef` is the search beam width;
+  0 or omitted means `max(64, k)`. Distances are Euclidean for `l2` and
+  `1 - cosine similarity` for `cosine`.
+- **Get.** For `cosine` collections the stored vector is the normalized input.
+- **Stats** include `vectors`, `tombstones`, `last_lsn`, `snapshot_lsn`,
+  `wal_segments`, `wal_fsyncs`, and a `recovery` object with the snapshot LSN
+  used at startup, records replayed, bytes truncated and time taken.
+
+Metrics: `vectordb_http_requests_total{route,code}`,
+`vectordb_http_request_duration_seconds` (histogram per route), and per
+collection `vectordb_collection_vectors`, `_tombstones`, `_last_lsn`,
+`_snapshot_lsn`, `_wal_segments`, `vectordb_wal_bytes_written_total`,
+`vectordb_wal_fsyncs_total`, `vectordb_snapshots_total`,
+`vectordb_upserts_total`, `vectordb_deletes_total`,
+`vectordb_searches_total`, `vectordb_recovery_replayed_records`,
+`vectordb_recovery_truncated_bytes`, plus uptime, goroutines and heap size.
+
+## Design decisions
+
+Design decisions are recorded as ADRs in [docs/adr](docs/adr/):
+
+- [0001: per-node locks and an atomically published node table](docs/adr/0001-locking-strategy.md)
+- [0002: WAL record format with CRC-32C and dense LSNs](docs/adr/0002-wal-format.md)
+- [0003: snapshots of the full graph plus WAL replay](docs/adr/0003-snapshot-and-replay.md)
+- [0004: chunked contiguous storage](docs/adr/0004-chunked-storage.md)
 
 ## Testing
 
@@ -470,4 +469,4 @@ That is allowed. Fewer would be a failure.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).

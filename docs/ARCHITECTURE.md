@@ -2,7 +2,6 @@
 
 vectordb-go is a single-process server. Each collection is an in-memory HNSW
 graph made durable by its own write-ahead log (WAL) and periodic snapshots.
-Everything is in the Go standard library.
 
 ```mermaid
 flowchart LR

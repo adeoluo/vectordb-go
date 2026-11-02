@@ -1,0 +1,9 @@
+flowchart LR
+    client([Client]) -->|HTTP JSON| server[HTTP server]
+    server --> db[DB]
+    db --> col[Collection]
+    col -->|1. append, fsync| wal[(WAL segments)]
+    col -->|2. link nodes| idx[HNSW graph]
+    col -.->|periodic| snap[(Snapshots)]
+    snap -.->|startup load| idx
+    wal -.->|startup replay| idx
