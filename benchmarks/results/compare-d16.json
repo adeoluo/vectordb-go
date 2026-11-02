@@ -1,0 +1,108 @@
+{
+  "machine": "arm64 Darwin 27.0.0",
+  "processor": "arm",
+  "threads": 8,
+  "params": {
+    "sizes": "10000,100000",
+    "dim": 16,
+    "queries": 200,
+    "k": 10,
+    "m": 16,
+    "ef_construction": 200,
+    "ef": 64,
+    "python_max": 10000,
+    "threads": 8,
+    "go_bin": "/Users/ade/Desktop/Projects/vectordb-go/bin/vectordb",
+    "out": "/Users/ade/Desktop/Projects/vectordb-go/benchmarks/results"
+  },
+  "versions": {
+    "hnswlib": "0.8.0",
+    "faiss": "1.15.1",
+    "numpy": "2.5.4",
+    "python": "3.13.15"
+  },
+  "runs": [
+    {
+      "n": 10000,
+      "dim": 16,
+      "rows": [
+        {
+          "library": "FAISS IndexFlatL2 (exact, C++)",
+          "build_1_thread_s": 0.0005631669773720205,
+          "build_all_threads_s": 0.0005631669773720205,
+          "recall": 1.0,
+          "latency_ms": 0.02168343523774272,
+          "qps_1_thread": 46118.15374435576,
+          "qps_all_threads": 163974.34391938878,
+          "note": "exact scan, BLAS"
+        },
+        {
+          "library": "hnswlib (C++)",
+          "build_1_thread_s": 0.5147477090358734,
+          "build_all_threads_s": 0.13779195898678154,
+          "recall": 0.9395,
+          "latency_ms": 0.02023362651192245,
+          "qps_1_thread": 49422.677610993785,
+          "qps_all_threads": 221342.054424926,
+          "note": "batched knn_query"
+        },
+        {
+          "library": "vectordb-go (Go)",
+          "build_1_thread_s": 0.550996958,
+          "build_all_threads_s": 0.118863833,
+          "recall": 0.931,
+          "latency_ms": 0.025065,
+          "qps_1_thread": 39813.648911735756,
+          "qps_all_threads": 189361.19565340376,
+          "note": "p99 0.045 ms"
+        },
+        {
+          "library": "Python HNSW library (ann-vector-search-library)",
+          "build_1_thread_s": 17.86781950003933,
+          "build_all_threads_s": null,
+          "recall": 0.926,
+          "latency_ms": 0.7446960400557145,
+          "qps_1_thread": 1342.8297536336904,
+          "qps_all_threads": null,
+          "note": "single threaded by design"
+        }
+      ]
+    },
+    {
+      "n": 100000,
+      "dim": 16,
+      "rows": [
+        {
+          "library": "FAISS IndexFlatL2 (exact, C++)",
+          "build_1_thread_s": 0.0009918329888023436,
+          "build_all_threads_s": 0.0009918329888023436,
+          "recall": 1.0,
+          "latency_ms": 0.20028996659675613,
+          "qps_1_thread": 4992.7613299437035,
+          "qps_all_threads": 17246.147822981446,
+          "note": "exact scan, BLAS"
+        },
+        {
+          "library": "hnswlib (C++)",
+          "build_1_thread_s": 8.83015512500424,
+          "build_all_threads_s": 2.026168707991019,
+          "recall": 0.75,
+          "latency_ms": 0.024576839239350244,
+          "qps_1_thread": 40688.71469846656,
+          "qps_all_threads": 169447.92049719908,
+          "note": "batched knn_query"
+        },
+        {
+          "library": "vectordb-go (Go)",
+          "build_1_thread_s": 11.647595792,
+          "build_all_threads_s": 2.1975584169999998,
+          "recall": 0.778,
+          "latency_ms": 0.034133,
+          "qps_1_thread": 29251.231891006326,
+          "qps_all_threads": 142288.3794213685,
+          "note": "p99 0.062 ms"
+        }
+      ]
+    }
+  ]
+}

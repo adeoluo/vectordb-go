@@ -1,0 +1,4 @@
+bin/
+dist/
+benchmarks/data/
+.git/

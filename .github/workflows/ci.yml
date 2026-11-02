@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Format, vet and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test -race
+        run: go test -race -count=1 -timeout 20m ./...
+
+      - name: Build
+        run: go build -o bin/vectordb ./cmd/vectordb
+
+      - name: Smoke benchmark
+        run: ./bin/vectordb bench --n 5000 --dim 16 --ef 64 --min-time 200ms
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build image
+        run: docker build -t vectordb-go:ci .
+      - name: Run and probe
+        run: |
+          docker run -d --name vdb -p 8080:8080 vectordb-go:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8080/health && break; sleep 1; done
+          curl -fsS -X POST localhost:8080/v1/collections -d '{"name":"ci","dim":3}'
+          curl -fsS -X POST localhost:8080/v1/collections/ci/upsert -d '{"vectors":[{"id":"a","values":[1,2,3]}]}'
+          curl -fsS -X POST localhost:8080/v1/collections/ci/search -d '{"vector":[1,2,3],"k":1}' | grep '"id":"a"'
+          docker stop vdb
