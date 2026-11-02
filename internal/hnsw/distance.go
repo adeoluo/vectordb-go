@@ -42,10 +42,11 @@ func ParseMetric(s string) (Metric, error) {
 	}
 }
 
-// l2sq returns the squared Euclidean distance between a and b. The loop is
-// unrolled by four, which lets the compiler keep four independent
+// l2sqGeneric returns the squared Euclidean distance between a and b. The loop
+// is unrolled by four, which lets the compiler keep four independent
 // accumulators in registers and roughly doubles throughput on short vectors.
-func l2sq(a, b []float32) float32 {
+// On arm64 the NEON kernel in distance_arm64.s is used instead (see l2sq).
+func l2sqGeneric(a, b []float32) float32 {
 	n := len(a)
 	b = b[:n]
 	var s0, s1, s2, s3 float32
@@ -67,7 +68,8 @@ func l2sq(a, b []float32) float32 {
 	return (s0 + s1) + (s2 + s3)
 }
 
-func dot(a, b []float32) float32 {
+// dotGeneric is the portable inner product; dot dispatches to NEON on arm64.
+func dotGeneric(a, b []float32) float32 {
 	n := len(a)
 	b = b[:n]
 	var s0, s1, s2, s3 float32
