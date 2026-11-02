@@ -118,6 +118,52 @@ All numbers below were measured on one machine: Apple M1 (4 performance and
 faiss-cpu 1.15.1, numpy 2.5.4. "8 threads" therefore means 4 fast and 4 slow
 cores. Raw results are in [benchmarks/results](benchmarks/results).
 
+### One million real vectors (SIFT1M)
+
+[SIFT1M](http://corpus-texmex.irisa.fr/) is the standard approximate nearest
+neighbor benchmark: 1,000,000 real 128-dimensional image descriptors, with its
+own queries and exact ground truth, so nothing here is generated. Every library
+indexes all one million vectors with `M` 16 and `efConstruction` 200 using all
+8 cores, then answers the first 1,000 queries on one thread.
+
+Reproduce: download `ftp://ftp.irisa.fr/local/texmex/corpus/sift.tar.gz`, then
+`make build && uv run --project ../ann-vector-search-library python benchmarks/sift1m.py --data sift`.
+Raw numbers: [benchmarks/results/sift1m.json](benchmarks/results/sift1m.json).
+
+| Library | Build, 8 threads | ef | Recall@10 | Latency, 1 thread | QPS, 1 thread |
+|---|---:|---:|---:|---:|---:|
+| FAISS IndexFlatL2 (exact, C++, BLAS) | 0.5 s | exact | 0.999 | 0.930 ms | 1,076 |
+| hnswlib (C++) | 155.3 s | 16 | 0.779 | 0.235 ms | 4,260 |
+| | | 32 | 0.892 | 0.216 ms | 4,634 |
+| | | 64 | 0.960 | 0.372 ms | 2,689 |
+| | | 128 | 0.988 | 0.504 ms | 1,984 |
+| | | 256 | 0.997 | 0.762 ms | 1,312 |
+| **vectordb-go, NEON kernels** | **102.0 s** | 16 | 0.782 | 0.068 ms | 14,731 |
+| | | 32 | 0.891 | 0.157 ms | 6,368 |
+| | | 64 | 0.957 | 0.187 ms | 5,353 |
+| | | 128 | 0.987 | 0.330 ms | 3,025 |
+| | | 256 | 0.995 | 0.597 ms | 1,673 |
+| vectordb-go, previous portable loop | 166.6 s | 16 | 0.784 | 0.114 ms | 8,730 |
+| | | 32 | 0.891 | 0.181 ms | 5,508 |
+| | | 64 | 0.958 | 0.302 ms | 3,314 |
+| | | 128 | 0.987 | 0.543 ms | 1,842 |
+| | | 256 | 0.996 | 0.993 ms | 1,007 |
+
+What this shows, and what it does not:
+
+- **Against its own previous version**, the NEON distance kernels make the
+  build 1.6x faster and queries 1.6x to 1.7x faster at identical recall. The
+  kernels live in [distance_arm64.s](internal/hnsw/distance_arm64.s); other
+  architectures use the portable Go loop.
+- **Against hnswlib**, vectordb-go builds the index faster and answers more
+  queries per second at every `ef` with the same recall. Read this with care:
+  hnswlib's hand-written SIMD distance code targets x86 (SSE and AVX), so on
+  this ARM machine its pip wheel computes distances with plain loops. On an x86
+  machine with AVX, expect hnswlib to be faster than shown here.
+- **Against an exact FAISS scan**, the graph index reaches 0.96 recall at 5x
+  the throughput, and 0.99 recall at 3x. The exact scan wins on recall and
+  needs no build time.
+
 ### Cross-library comparison
 
 [benchmarks/compare.py](benchmarks/compare.py) generates the dataset with the
@@ -233,6 +279,17 @@ vectors, M 16, efConstruction 200, ef 64, k 10.
 | `BenchmarkAppend/interval` | 2.7 µs |
 | `BenchmarkAppend/always` (one writer) | 3.98 ms |
 | `BenchmarkAppendParallel` (`always`, 64 writers) | 0.138 ms per append, 31 appends per fsync |
+
+Distance kernel, squared L2 per call (`BenchmarkL2`), NEON versus the portable
+loop. Below 32 dimensions the call overhead outweighs the vector width, so the
+portable loop is used there.
+
+| Dimensions | Portable Go loop | NEON kernel | Speedup |
+|---:|---:|---:|---:|
+| 16 | 7.0 ns | 7.9 ns | not used |
+| 32 | 12.0 ns | 10.7 ns | 1.1x |
+| 128 | 42.2 ns | 18.5 ns | 2.3x |
+| 768 | 247.5 ns | 70.4 ns | 3.5x |
 
 ### Durability and server throughput
 
@@ -475,7 +532,8 @@ That is allowed. Fewer would be a failure.
 - Deletes are tombstones. The graph routes through deleted nodes, and they
   are not reclaimed, so a collection with heavy churn slowly grows.
 - No metadata filtering, hybrid search, or quantization.
-- Distance kernels are scalar Go. hnswlib's SIMD kernels are faster.
+- SIMD distance kernels exist for arm64 (NEON) only; on x86 the portable Go
+  loop is used, and hnswlib's AVX kernels are faster there.
 - Corruption in the middle of the active log segment truncates everything
   after it.
 - Write throughput per collection with `--fsync always` is bounded by the
@@ -489,8 +547,7 @@ That is allowed. Fewer would be a failure.
 - Payload metadata with filtered search.
 - Segment footers or a checksum chain to tell a torn tail from mid-log
   corruption.
-- SIMD distance kernels via Go assembly behind a build tag, keeping the
-  scalar path as the default.
+- AVX2 distance kernels for amd64, matching the arm64 NEON kernels.
 - Scalar quantization (int8) to cut memory by 4x.
 - Streaming snapshots so a snapshot does not need a full in-memory copy.
 - Read replicas fed by WAL shipping.
