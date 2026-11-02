@@ -9,7 +9,7 @@ graph (Malkov and Yashunin, 2016), makes every acknowledged write durable
 through a checksummed write-ahead log, and restarts from a snapshot plus log
 replay after a crash.
 
-It is the compiled, durable, concurrent counterpart of my pure-Python
+It is the compiled, durable, concurrent counterpart of my Python HNSW library
 [ann-vector-search-library](https://github.com/adeoluo/ann-vector-search-library):
 the same algorithm and the same neighbor selection heuristic, measured on the
 same dataset, with persistence and concurrency added.
@@ -254,7 +254,7 @@ Method notes:
 - hnswlib and FAISS queries are timed as one batched call (`num_threads=1`
   for the single-thread column), so Python call overhead is excluded.
   vectordb-go queries are timed one at a time inside the Go process. The
-  pure-Python index is timed one query at a time, as it is used.
+  Python implementation is timed one query at a time, as it is used.
 - "Latency" is mean time per query on one thread.
 - The query generator draws a new set of cluster centers (seed 1), so queries
   fall between the base clusters. This is a hard case for graph search and
@@ -270,7 +270,7 @@ Reproduce: `make build && uv run --project ../ann-vector-search-library python b
 | FAISS IndexFlatL2 (exact, C++) | 0.001 s | 0.001 s | 1.000 | 0.022 ms | 46,118 | 163,974 |
 | hnswlib (C++) | 0.515 s | 0.138 s | 0.940 | 0.020 ms | 49,423 | 221,342 |
 | **vectordb-go (Go)** | 0.551 s | 0.119 s | 0.931 | 0.025 ms | 39,814 | 189,361 |
-| ann-vector-search-library (pure Python) | 17.868 s | n/a | 0.926 | 0.745 ms | 1,343 | n/a |
+| Python HNSW library (ann-vector-search-library) | 17.868 s | n/a | 0.926 | 0.745 ms | 1,343 | n/a |
 
 **100,000 vectors, dim 16**
 
@@ -287,7 +287,7 @@ Reproduce: `make build && uv run --project ../ann-vector-search-library python b
 | FAISS IndexFlatL2 (exact, C++) | <0.001 s | <0.001 s | 1.000 | 0.030 ms | 33,187 | 100,945 |
 | hnswlib (C++) | 0.641 s | 0.152 s | 0.899 | 0.028 ms | 35,456 | 153,005 |
 | **vectordb-go (Go)** | 0.645 s | 0.140 s | 0.886 | 0.033 ms | 30,170 | 145,655 |
-| ann-vector-search-library (pure Python) | 26.782 s | n/a | 0.902 | 1.213 ms | 825 | n/a |
+| Python HNSW library (ann-vector-search-library) | 26.782 s | n/a | 0.902 | 1.213 ms | 825 | n/a |
 
 **100,000 vectors, dim 32**
 
@@ -297,13 +297,13 @@ Reproduce: `make build && uv run --project ../ann-vector-search-library python b
 | hnswlib (C++) | 13.817 s | 3.139 s | 0.652 | 0.037 ms | 26,752 | 115,184 |
 | **vectordb-go (Go)** | 17.234 s | 3.632 s | 0.710 | 0.052 ms | 19,310 | 96,045 |
 
-The pure-Python index was not run at 100,000 vectors: at roughly 1.8 to
+The Python implementation was not run at 100,000 vectors: at roughly 1.8 to
 2.7 ms per insert, a single-threaded build would take several minutes, and
 its own README already documents how it scales.
 
 **Reading the results.**
 
-- **Against the pure-Python library** (same algorithm, same data), the Go
+- **Against the Python implementation** (same algorithm, same data), the Go
   implementation builds 32x faster at dim 16 and 42x faster at dim 32 on
   one thread, and answers queries 30x and 37x faster. This is the gap the
   Python library's README identified; a compiled implementation closes it.
@@ -374,14 +374,14 @@ parallel linking).
 ## Relation to ann-vector-search-library
 
 [ann-vector-search-library](https://github.com/adeoluo/ann-vector-search-library)
-is a from-scratch HNSW in pure Python with zero dependencies. Its README
+is the Python HNSW library this project is compared against. Its README
 measured it against hnswlib and found matching recall but about 27x slower
 queries and 150x slower builds, and listed a compiled backend in its
 roadmap. This project is that follow-up:
 
 | | ann-vector-search-library | vectordb-go |
 |---|---|---|
-| Language | Python, no numeric libraries | Go, standard library only |
+| Language | Python | Go, standard library only |
 | Algorithm | HNSW, heuristic neighbor selection | same algorithm and heuristic |
 | Parameters | `m`, `ef_construction`, `ef` | same parameters, same values in the benchmark |
 | Concurrency | single threaded | concurrent inserts and searches, per-node locks |

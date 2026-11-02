@@ -1,4 +1,5 @@
-"""Compare vectordb-go with hnswlib, FAISS and the pure-Python HNSW library.
+"""Compare vectordb-go with hnswlib, FAISS and the Python HNSW library
+(ann-vector-search-library).
 
 Every library is measured on the same vectors, generated with the data module
 of ann-vector-search-library (the same generator its own
@@ -129,7 +130,7 @@ def run_python(vectors, queries, truth, k, m, efc, ef):
     for q in queries:
         index.search(q, k, ef=ef)
     per_q = (time.perf_counter() - t0) / len(queries)
-    return row("ann-vector-search-library (pure Python)", build, None, recall(pred, truth, k),
+    return row("Python HNSW library (ann-vector-search-library)", build, None, recall(pred, truth, k),
                per_q * 1e3, 1 / per_q, None, "single threaded by design")
 
 
@@ -161,7 +162,7 @@ def main() -> None:
     ap.add_argument("--ef-construction", type=int, default=200)
     ap.add_argument("--ef", type=int, default=64)
     ap.add_argument("--python-max", type=int, default=10000,
-                    help="skip the pure-Python index above this size (it takes minutes per 10k)")
+                    help="skip the Python implementation above this size (it takes minutes per 10k)")
     ap.add_argument("--threads", type=int, default=os.cpu_count())
     ap.add_argument("--go-bin", default=str(ROOT / "bin" / "vectordb"))
     ap.add_argument("--out", default=str(ROOT / "benchmarks" / "results"))
@@ -212,7 +213,7 @@ def main() -> None:
                   f"{r['recall']:.3f} | {r['latency_ms']:.4f} ms | {fmt(r['qps_1_thread'], ',.0f')} | "
                   f"{fmt(r['qps_all_threads'], ',.0f')} |")
         if n > args.python_max:
-            print(f"\nThe pure-Python index was skipped at {n:,} vectors (above --python-max).")
+            print(f"\nThe Python implementation was skipped at {n:,} vectors (above --python-max).")
     path = out_dir / f"compare-d{args.dim}.json"
     path.write_text(json.dumps(report, indent=2) + "\n")
     print(f"\nwrote {path.relative_to(ROOT)}")

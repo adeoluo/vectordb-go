@@ -57,7 +57,7 @@
           "note": "p99 0.045 ms"
         },
         {
-          "library": "ann-vector-search-library (pure Python)",
+          "library": "Python HNSW library (ann-vector-search-library)",
           "build_1_thread_s": 17.86781950003933,
           "build_all_threads_s": null,
           "recall": 0.926,
