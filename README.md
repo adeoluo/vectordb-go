@@ -404,6 +404,12 @@ Creating a collection, upserting vectors, and searching over the HTTP API.
   <img src="docs/demo/api.gif" alt="Creating a collection, upserting vectors, and searching over the HTTP API" width="860">
 </p>
 
+The benchmark with cosine distance on 64-dimensional vectors.
+
+<p align="center">
+  <img src="docs/demo/cosine.gif" alt="The benchmark with cosine distance on 64-dimensional vectors" width="860">
+</p>
+
 ## Design decisions
 
 Design decisions are recorded as ADRs in [docs/adr](docs/adr/):
