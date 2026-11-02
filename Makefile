@@ -3,7 +3,7 @@ LDFLAGS := -s -w -X github.com/adeoluo/vectordb-go/internal/cli.Version=$(VERSIO
 PYLIB ?= ../ann-vector-search-library
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 
-.PHONY: all build test race vet fmt fmt-check bench compare release docker clean
+.PHONY: all build test race vet fmt fmt-check bench compare release docker clean changelog cut-release
 
 all: fmt-check vet race build
 
@@ -46,3 +46,9 @@ docker:
 
 clean:
 	rm -rf bin dist
+
+changelog: ## Regenerate CHANGELOG.md from Conventional Commits (git-cliff)
+	git cliff --output CHANGELOG.md && perl -0pi -e 's/\n+\z/\n/' CHANGELOG.md
+
+cut-release: ## Cut a release locally: version bump, changelog, tag, GitHub release (RELEASE_VERSION=vX.Y.Z optional)
+	scripts/release.sh $(RELEASE_VERSION)
