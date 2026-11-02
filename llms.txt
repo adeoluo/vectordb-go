@@ -1,0 +1,27 @@
+# VectorDB Go
+
+> A concurrent, persistent HNSW vector database server in Go, with a checksummed write-ahead log, snapshots, and crash recovery.
+
+Languages: Go. License: MIT. Source: https://github.com/adeoluo/vectordb-go
+
+## Docs
+
+- [README](https://github.com/adeoluo/vectordb-go/blob/main/README.md): motivation, architecture, results, quickstart, usage, design decisions, testing, limitations, roadmap
+- [AGENTS.md](https://github.com/adeoluo/vectordb-go/blob/main/AGENTS.md): layout, commands and conventions for changing the code
+- [Architecture diagram](https://github.com/adeoluo/vectordb-go/blob/main/docs/architecture/architecture.mmd): Mermaid source of the component diagram
+- [Architecture](https://github.com/adeoluo/vectordb-go/blob/main/docs/ARCHITECTURE.md)
+- [ADR 0001: Per-node locks and an atomically published node table](https://github.com/adeoluo/vectordb-go/blob/main/docs/adr/0001-locking-strategy.md)
+- [ADR 0002: WAL record format with CRC-32C and dense LSNs](https://github.com/adeoluo/vectordb-go/blob/main/docs/adr/0002-wal-format.md)
+- [ADR 0003: Snapshots of the full graph plus WAL replay](https://github.com/adeoluo/vectordb-go/blob/main/docs/adr/0003-snapshot-and-replay.md)
+- [ADR 0004: Chunked contiguous storage for vectors and bottom-layer links](https://github.com/adeoluo/vectordb-go/blob/main/docs/adr/0004-chunked-storage.md)
+- [Changelog](https://github.com/adeoluo/vectordb-go/blob/main/CHANGELOG.md): release history
+
+## Source
+
+- [cmd/vectordb](https://github.com/adeoluo/vectordb-go/tree/main/cmd/vectordb): Command vectordb runs the vector database server and its benchmark tool.
+- [internal/cli](https://github.com/adeoluo/vectordb-go/tree/main/internal/cli): Package cli implements the vectordb command line: serve and bench.
+- [internal/dataset](https://github.com/adeoluo/vectordb-go/tree/main/internal/dataset): Package dataset generates deterministic synthetic vectors, reads and writes the standard fvecs and ivecs formats, and computes exact nearest neighbor ground truth by brute force.
+- [internal/db](https://github.com/adeoluo/vectordb-go/tree/main/internal/db): Package db manages named collections, each an HNSW index made durable by a write-ahead log and periodic snapshots.
+- [internal/hnsw](https://github.com/adeoluo/vectordb-go/tree/main/internal/hnsw): Package hnsw implements a Hierarchical Navigable Small World graph (Malkov and Yashunin, 2016) for approximate nearest neighbor search over float32 vectors.
+- [internal/server](https://github.com/adeoluo/vectordb-go/tree/main/internal/server): Package server exposes a db.DB over an HTTP JSON API.
+- [internal/wal](https://github.com/adeoluo/vectordb-go/tree/main/internal/wal): Package wal implements a segmented, append-only write-ahead log.
