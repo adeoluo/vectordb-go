@@ -3,17 +3,13 @@
 vectordb-go is a single-process server. Each collection is an in-memory HNSW
 graph made durable by its own write-ahead log (WAL) and periodic snapshots.
 
-```mermaid
-flowchart LR
-    client([HTTP client]) --> api[server: net/http JSON API]
-    api --> db[db: collections]
-    db --> col1[collection A]
-    db --> col2[collection B]
-    col1 --> wal1[(WAL segments)]
-    col1 --> snap1[(snapshots)]
-    col1 --> idx1[hnsw.Index in memory]
-    api --> metrics[/metrics Prometheus text/]
-```
+<p align="center">
+  <img src="architecture/architecture.svg" alt="Architecture diagram" width="860">
+</p>
+
+<sub>Legend: amber = entry points and external systems, indigo = core logic, green = data and state, blue = validation and control, grey = observability and outputs.</sub>
+
+The diagram source is [architecture/architecture.mmd](architecture/architecture.mmd).
 
 ## Packages
 

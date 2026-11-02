@@ -45,9 +45,15 @@ same dataset, with persistence and concurrency added.
   <img src="docs/architecture/architecture.svg" alt="Architecture diagram" width="860">
 </p>
 
-A write goes to the log first and becomes searchable only after it is
-durable. Startup loads the newest valid snapshot and replays the log records
-after it. Detailed write, snapshot and recovery sequences are in
+<sub>Legend: amber = entry points and external systems, indigo = core logic, green = data and state, blue = validation and control, grey = observability and outputs.</sub>
+
+Requests are validated by the HTTP layer and routed to the DB or to a
+collection. A write goes to the log first and becomes searchable only after it
+is durable and linked into the in-memory HNSW graph. The snapshot policy
+triggers consistent snapshots, and startup loads the newest valid snapshot and
+replays the log records after it. The benchmark measures recall and throughput
+against exact ground truth, and every route is counted in the Prometheus
+metrics. Detailed write, snapshot and recovery sequences are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### Concurrency model
