@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The file is generated
 from Conventional Commits by [git-cliff](https://git-cliff.org) when a release is cut
 with `make cut-release`.
 
+## [0.2.0] 2026-11-02
+
+### Performance
+
+- NEON distance kernels and a SIFT1M benchmark (#5)
+
+### Documentation
+
+- Remove authorship statements from docs and scripts
+- Recorded demos of more commands, with their vhs tapes (#3)
+- Recorded demos of the HTTP service and more commands (#4)
+
+### Maintenance
+
+- Classify squash merges in the changelog by the commits they contain
+
 ## [0.1.1] 2026-11-02
 
 ### Documentation
