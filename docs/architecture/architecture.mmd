@@ -5,61 +5,44 @@ flowchart LR
     classDef control  fill:#0EA5E9,stroke:#1E293B,color:#ffffff,stroke-width:1px;
     classDef obs      fill:#CBD5E1,stroke:#1E293B,color:#1E293B,stroke-width:1px;
 
-    Client(["HTTP client<br/>or vectordb load"]):::edge
-    CLI(["vectordb CLI<br/>serve | bench | load"]):::edge
-
-    subgraph API["Interfaces (internal/server, net/http JSON)"]
+    subgraph Interfaces["Interfaces (internal/server)"]
         direction TB
-        Router["Router + handlers<br/>collections, upsert, delete, search, vectors, snapshot"]:::core
-        Validate["Validation + error mapping<br/>ids, dims, NaN/Inf, size limits"]:::control
+        CLI["vectordb CLI<br/>serve, bench, load"]:::edge
+        Client(["HTTP client<br/>or vectordb load"]):::edge
+        Router["HTTP handlers<br/>collections, vectors"]:::core
+        Validate["Validation<br/>ids, dims, NaN/Inf"]:::control
+        CLI ~~~ Client --> Router --> Validate
     end
 
     subgraph Core["Database core (internal/db)"]
         direction TB
-        DB["DB<br/>named collections, data-dir LOCK"]:::core
-        Collection["Collection<br/>wmu orders log writes, group commit"]:::core
-        Policy["Snapshot policy<br/>interval, WAL bytes, shutdown"]:::control
-        Recovery["Recovery<br/>newest valid snapshot + WAL replay"]:::control
+        DB["DB<br/>collections, LOCK file"]:::core
+        Collection["Collection<br/>log-ordered writes"]:::core
+        Policy["Snapshot policy<br/>interval, WAL bytes"]:::control
+        Recovery["Recovery<br/>snapshot + WAL replay"]:::control
+        DB --> Collection
+        Policy --> Collection
+        Collection ~~~ Recovery
     end
 
-    subgraph Index["Index (internal/hnsw, in memory)"]
+    subgraph Storage["Index and durable state"]
         direction TB
-        HNSW["HNSW graph<br/>allocate, link, tombstones, ef search"]:::core
+        HNSW["HNSW graph<br/>link, tombstone, search"]:::core
         Distance["Distance kernels<br/>L2, cosine"]:::core
-    end
-
-    subgraph Disk["Durable state (on disk)"]
-        direction TB
-        WAL[("WAL segments<br/>CRC-32C frames, fsync policy")]:::data
+        WAL[("WAL segments<br/>CRC-32C, fsync")]:::data
         Snap[("Snapshots<br/>newest 2 kept")]:::data
-        Meta[("meta.json<br/>dim, metric, M, efConstruction")]:::data
+        Meta[("meta.json<br/>dim, metric, M")]:::data
+        Distance --> HNSW ~~~ WAL ~~~ Snap ~~~ Meta
     end
 
     subgraph Obs["Benchmarking and observability"]
         direction TB
-        Dataset[("Datasets<br/>synthetic, fvecs/ivecs, exact ground truth")]:::data
-        Bench["Benchmark<br/>recall@k and QPS per ef"]:::obs
-        Metrics["Route metrics<br/>Prometheus GET /metrics"]:::obs
+        Dataset[("Datasets<br/>synthetic, fvecs/ivecs")]:::data
+        Bench["Benchmark<br/>recall@k, QPS per ef"]:::obs
+        Metrics["Route metrics<br/>Prometheus text"]:::obs
+        Dataset --> Bench ~~~ Metrics
     end
 
-    Client -->|HTTP JSON| Router
-    CLI -->|serve| Router
-    CLI -->|bench| Bench
-    Router --> Validate
-    Validate -->|create, list, drop| DB
-    Validate -->|upsert, delete, search, get| Collection
-    DB -->|open each| Recovery
-    DB -->|create| Meta
-    Policy -.->|trigger| Collection
-    Collection -->|1. append record, fsync| WAL
-    Collection -->|2. allocate + link nodes| HNSW
-    Collection -->|search k, ef| HNSW
-    Collection -->|consistent cut| Snap
-    Distance -.->|metric| HNSW
-    Snap -.->|load newest valid| Recovery
-    WAL -.->|replay after snapshot LSN| Recovery
-    Meta -.->|config| Recovery
-    Recovery -->|restored index| HNSW
-    Dataset -->|vectors + ground truth| Bench
-    Bench -->|in-process index| HNSW
-    Router -.-> Metrics
+    Interfaces -->|validated operations| Core
+    Core -->|log, link, snapshot| Storage
+    Interfaces -->|bench, request metrics| Obs
