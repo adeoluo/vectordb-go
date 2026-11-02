@@ -318,6 +318,12 @@ docker run -p 8080:8080 -v vectordb-data:/data vectordb-go
 
 ## Usage
 
+A real run of the built-in benchmark: 20,000 clustered vectors, recall@10 and latency per `ef`, and throughput with one and eight goroutines. Regenerate with `vhs docs/demo/bench.tape`.
+
+<p align="center">
+  <img src="docs/demo/bench.gif" alt="vectordb bench output: recall and QPS per ef" width="860">
+</p>
+
 ### Command line
 
 ```
