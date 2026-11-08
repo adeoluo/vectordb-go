@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/adeoluo/vectordb-go/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/adeoluo/vectordb-go/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/adeoluo/vectordb-go/releases"><img alt="Release" src="https://img.shields.io/github/v/release/adeoluo/vectordb-go"></a>
-  <img alt="Go" src="https://img.shields.io/badge/go-1.24-00ADD8">
+  <img alt="Go" src="https://img.shields.io/badge/go-1.27-00ADD8">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
@@ -334,7 +334,7 @@ directly, so both are measured on identical vectors and queries.
 
 ## Quickstart
 
-Requires Go 1.24 or later, or Docker. Prebuilt binaries for Linux and macOS
+Requires Go 1.27 or later, or Docker. Prebuilt binaries for Linux and macOS
 are on the [releases page](https://github.com/adeoluo/vectordb-go/releases).
 
 ```sh
