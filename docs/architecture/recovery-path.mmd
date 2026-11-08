@@ -1,0 +1,26 @@
+flowchart LR
+    classDef edge     fill:#F59E0B,stroke:#1E293B,color:#1E293B,stroke-width:1px;
+    classDef core     fill:#6366F1,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef data     fill:#10B981,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef control  fill:#0EA5E9,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef obs      fill:#CBD5E1,stroke:#1E293B,color:#1E293B,stroke-width:1px;
+    subgraph Snap["Load newest good snapshot"]
+        direction TB
+        start(["open collection"]):::edge --> meta["read meta.json,<br/>list snapshots newest first"]:::data
+        meta --> try{"snapshot OK?"}:::control
+        try -- yes --> loaded["index = snapshot<br/>after = L"]:::core
+        try -- "no: .corrupt" --> try
+        try -- none left --> empty["index = empty<br/>after = 0"]:::core
+    end
+    subgraph Replay["Replay the WAL in LSN order"]
+        direction TB
+        rec{"frame valid?"}:::control -- yes --> apply{"LSN > after?"}:::control
+        apply -- yes --> replay["apply record"]:::core
+        replay --> rec
+        apply -- no --> rec
+        rec -- "end" --> done(["open for appends"]):::obs
+        rec -- "bad tail" --> trunc["truncate, fsync"]:::core
+        trunc --> done
+        rec -- "bad earlier" --> fail(["ErrCorrupt"]):::obs
+    end
+    Snap -->|index, after LSN| Replay

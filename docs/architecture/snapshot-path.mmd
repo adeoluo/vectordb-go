@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant T as Trigger (interval, WAL bytes, shutdown, API)
+    participant Col as Collection
+    participant W as WAL
+    participant FS as Disk
+
+    T->>Col: Snapshot()
+    Note over Col: lock wmu, wait for in-flight links
+    Col->>W: Rotate(): fsync and close segment, start new one at LSN L+1
+    Col->>Col: serialize graph to memory (consistent cut at LSN L)
+    Note over Col: unlock wmu (writes resume)
+    Col->>FS: write snapshot-L.snap.tmp, fsync, rename, fsync dir
+    Col->>FS: keep newest 2 snapshots
+    Col->>W: remove segments fully covered by the older retained snapshot
