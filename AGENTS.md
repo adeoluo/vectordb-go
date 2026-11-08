@@ -13,6 +13,7 @@ A concurrent, persistent HNSW vector database server in Go, with a checksummed w
 - `cmd/`: entry points for the binaries
 - `docs/`: documentation, architecture diagram source and render, design records
 - `internal/`: packages private to this module
+- `scripts/`: maintenance scripts (release, assets, data)
 
 Key modules:
 
