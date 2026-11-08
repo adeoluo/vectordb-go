@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "VectorDB Go"
+abstract: "A concurrent, persistent HNSW vector database server in Go: a checksummed write-ahead log, snapshot and replay crash recovery, an HTTP API, and benchmarks against hnswlib and FAISS."
+authors:
+  - family-names: "Ogunnoiki"
+    given-names: "Adeolu"
+version: "0.2.0"
+date-released: "2026-11-02"
+license: MIT
+repository-code: "https://github.com/adeoluo/vectordb-go"
+url: "https://github.com/adeoluo/vectordb-go"
+keywords:
+  - "ann"
+  - "crash-recovery"
+  - "go"
+  - "hnsw"
+  - "performance"
+  - "vector-database"
+  - "write-ahead-log"
+  - "golang"
