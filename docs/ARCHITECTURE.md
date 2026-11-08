@@ -27,26 +27,9 @@ The diagram source is [architecture/architecture.mmd](architecture/architecture.
 An upsert is acknowledged only after its batch is in the log (and fsynced
 under the default `always` policy) and linked into the graph.
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant H as HTTP handler
-    participant Col as Collection
-    participant W as WAL
-    participant I as HNSW index
-
-    C->>H: POST /v1/collections/{name}/upsert
-    H->>Col: Upsert(batch)
-    Col->>Col: validate ids, dims, NaN/Inf; dedupe batch
-    Note over Col: lock wmu (write order = log order)
-    Col->>W: Write(record) one write(2), LSN n
-    Col->>I: Allocate nodes, update id map, tombstone old versions
-    Note over Col: unlock wmu
-    Col->>W: WaitDurable(n) (group commit: one fsync covers many writers)
-    Col->>I: Link nodes into graph (parallel for a batch)
-    Col-->>H: LSN n
-    H-->>C: 200 {"upserted": k, "lsn": n}
-```
+<p align="center">
+  <img src="architecture/write-path.svg" alt="Write path diagram" width="860">
+</p>
 
 Key points:
 
@@ -74,47 +57,20 @@ Key points:
 
 ## Snapshot path
 
-```mermaid
-sequenceDiagram
-    participant T as Trigger (interval, WAL bytes, shutdown, API)
-    participant Col as Collection
-    participant W as WAL
-    participant FS as Disk
-
-    T->>Col: Snapshot()
-    Note over Col: lock wmu, wait for in-flight links
-    Col->>W: Rotate(): fsync and close segment, start new one at LSN L+1
-    Col->>Col: serialize graph to memory (consistent cut at LSN L)
-    Note over Col: unlock wmu (writes resume)
-    Col->>FS: write snapshot-L.snap.tmp, fsync, rename, fsync dir
-    Col->>FS: keep newest 2 snapshots
-    Col->>W: remove segments fully covered by the older retained snapshot
-```
+<p align="center">
+  <img src="architecture/snapshot-path.svg" alt="Snapshot path diagram" width="772">
+</p>
 
 Writes pause only while the graph is copied into a buffer, not while it is
 written to disk. Searches never pause.
 
 ## Recovery path
 
-```mermaid
-flowchart TD
-    start([open collection]) --> meta[read meta.json]
-    meta --> list[list snapshots, newest first]
-    list --> try{CRC and decode OK?}
-    try -- yes --> loaded[index = snapshot, after = L]
-    try -- no --> aside[rename to .corrupt, try next older]
-    aside --> try
-    list -- none usable --> empty[index = empty, after = 0]
-    loaded --> scan
-    empty --> scan
-    scan[scan WAL segments in LSN order] --> rec{next frame valid?<br/>length sane, CRC-32C matches,<br/>LSN = previous + 1}
-    rec -- yes --> apply{LSN > after?}
-    apply -- yes --> replay[apply record to index] --> rec
-    apply -- no --> rec
-    rec -- end of data --> done([open for appends])
-    rec -- invalid in last segment --> trunc[truncate file at last valid frame, fsync] --> done
-    rec -- invalid in earlier segment --> fail([refuse to start: ErrCorrupt])
-```
+<p align="center">
+  <img src="architecture/recovery-path.svg" alt="Recovery path diagram" width="860">
+</p>
+
+<sub>Legend: amber = entry points and external systems, indigo = core logic, green = data and state, blue = validation and control, grey = observability and outputs.</sub>
 
 - A bad frame at the end of the **last** segment is the signature of a crash
   during `write(2)`: the record was never acknowledged, so it is dropped and

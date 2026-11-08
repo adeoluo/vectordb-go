@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant C as Client
+    participant H as HTTP handler
+    participant Col as Collection
+    participant W as WAL
+    participant I as HNSW index
+
+    C->>H: POST /v1/collections/<br/>{name}/upsert
+    H->>Col: Upsert(batch)
+    Col->>Col: validate ids, dims, NaN/Inf, dedupe batch
+    Note over Col: lock wmu (write order = log order)
+    Col->>W: Write(record) one write(2), LSN n
+    Col->>I: Allocate nodes, update id map, tombstone old versions
+    Note over Col: unlock wmu
+    Col->>W: WaitDurable(n) (group commit: one fsync covers many writers)
+    Col->>I: Link nodes into graph (parallel for a batch)
+    Col-->>H: LSN n
+    H-->>C: 200 {"upserted": k, "lsn": n}
