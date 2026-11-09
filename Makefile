@@ -3,7 +3,7 @@ LDFLAGS := -s -w -X github.com/adeoluo/vectordb-go/internal/cli.Version=$(VERSIO
 PYLIB ?= ../ann-vector-search-library
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 
-.PHONY: all build test race vet fmt fmt-check bench compare release docker clean changelog cut-release
+.PHONY: all build test race vet fmt fmt-check bench compare release docker clean changelog cut-release diagram
 
 all: fmt-check vet race build
 
@@ -52,3 +52,8 @@ changelog: ## Regenerate CHANGELOG.md from Conventional Commits (git-cliff)
 
 cut-release: ## Cut a release locally: version bump, changelog, tag, GitHub release (RELEASE_VERSION=vX.Y.Z optional)
 	scripts/release.sh $(RELEASE_VERSION)
+
+diagram: ## Render every diagram in docs/architecture to SVG (house theme, white background)
+	@for f in docs/architecture/*.mmd; do \
+		npx -y @mermaid-js/mermaid-cli -q -i "$$f" -o "$${f%.mmd}.svg" -c mermaid.config.json -b white || exit 1; \
+	done
