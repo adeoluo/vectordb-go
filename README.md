@@ -15,6 +15,23 @@
 
 > **Evidence level: publicly benchmarked.** Recall and latency on SIFT1M against FAISS and hnswlib on a single Apple M1; write-ahead-log recovery is covered by process-kill tests. Not independently reproduced and not used in production. [What the levels mean](https://github.com/adeoluo#evidence-levels).
 
+## In plain English
+
+A vector database stores lists of numbers that stand for text or images, and finds the
+closest matches to a question quickly. This one is a server written in Go that keeps your
+data when it crashes.
+
+- **It survives being killed.** A test kills the real server in the middle of a write,
+  damages the end of its log file, restarts it, and checks every saved item bit for bit.
+- **It is quick on one million items.** On the standard SIFT1M test it answers 1.3x to 2.0x
+  more questions per second than hnswlib, a popular C++ library, at the same accuracy.
+- **It beats checking everything.** It finds 96% of the true matches 5 times faster than an
+  exact FAISS scan, and 99% of them 3 times faster.
+
+**Where it falls short:** the speed win over hnswlib is on an Arm laptop only. hnswlib's fast
+code is written for Intel and AMD chips, so expect hnswlib to win there. Everything was timed
+on one machine.
+
 ## Motivation
 
 A concurrent, persistent vector database server written in Go. It serves
