@@ -13,6 +13,8 @@
 
 ---
 
+> **Evidence level: publicly benchmarked.** Recall and latency on SIFT1M against FAISS and hnswlib on a single Apple M1; write-ahead-log recovery is covered by process-kill tests. Not independently reproduced and not used in production. [What the levels mean](https://github.com/adeoluo#evidence-levels).
+
 ## Motivation
 
 A concurrent, persistent vector database server written in Go. It serves
