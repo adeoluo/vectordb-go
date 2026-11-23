@@ -158,7 +158,10 @@ What this shows, and what it does not:
   kernels live in [distance_arm64.s](internal/hnsw/distance_arm64.s); other
   architectures use the portable Go loop.
 - **Against hnswlib**, vectordb-go builds the index faster and answers more
-  queries per second at every `ef` with the same recall. Read this with care:
+  queries per second at every `ef` with the same recall: 1.3x to 2.0x for `ef`
+  32 to 256. The 3.5x at `ef` 16 should be discounted, because hnswlib measured
+  slower there than at `ef` 32, which a larger beam cannot explain; that row
+  is noise on a shared laptop. Read the rest with care too:
   hnswlib's hand-written SIMD distance code targets x86 (SSE and AVX), so on
   this ARM machine its pip wheel computes distances with plain loops. On an x86
   machine with AVX, expect hnswlib to be faster than shown here.
