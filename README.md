@@ -15,7 +15,7 @@
 
 > **Evidence level: publicly benchmarked.** Recall and latency on SIFT1M against FAISS and hnswlib on a single Apple M1; write-ahead-log recovery is covered by process-kill tests. Not independently reproduced and not used in production. [What the levels mean](https://github.com/adeoluo#evidence-levels).
 
-## In plain English
+## Summary
 
 A vector database stores lists of numbers that stand for text or images, and finds the
 closest matches to a question quickly. This one is a server written in Go that keeps your
