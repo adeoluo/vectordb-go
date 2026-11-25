@@ -13,7 +13,7 @@
 
 ---
 
-> **Evidence level: publicly benchmarked.** Search accuracy (recall) and speed (latency) were measured on SIFT1M, a public set of one million vectors. They were compared with FAISS and hnswlib (two widely used C++ search libraries) on a single Apple M1 laptop. Recovery from the write-ahead log is covered by tests that kill the server process. No one else has reproduced the results, and the server has not been used in production. [What the levels mean](https://github.com/adeoluo#evidence-levels).
+> **Evidence level: publicly benchmarked.** Search accuracy (recall) and speed (latency) were measured on SIFT1M, a public set of one million vectors. They were compared with FAISS and hnswlib (two widely used C++ search libraries) on a single Apple M1 laptop. Recovery from the write-ahead log is covered by tests that kill the server process. No one else has reproduced the results, and the server has not been used in production.
 
 ## Highlights
 
